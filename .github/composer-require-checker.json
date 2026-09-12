@@ -1,0 +1,14 @@
+{
+    "symbol-whitelist": [
+        "Illuminate\\Bus\\Queueable",
+        "Illuminate\\Contracts\\Config\\Repository",
+        "Illuminate\\Contracts\\Events\\Dispatcher",
+        "Illuminate\\Contracts\\Queue\\ShouldQueue",
+        "Illuminate\\Http\\Client\\Factory",
+        "Illuminate\\Queue\\InteractsWithQueue",
+        "Illuminate\\Queue\\Jobs\\SyncJob",
+        "Illuminate\\Support\\Facades\\Facade",
+        "Illuminate\\Support\\InteractsWithTime",
+        "Illuminate\\Support\\ServiceProvider"
+    ]
+}
