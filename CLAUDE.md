@@ -106,10 +106,11 @@ Read the class docblock before changing it. The short form:
   `LaravelZeroTest` registers the provider itself, and testing discovery would need
   `laravel-zero/framework` as a dev dependency.
 - **`composer-require-checker` carries the undeclared-dependency check, and is not in
-  `composer check`.** `laravel/framework` `replace`s every `illuminate/*` component, so every
-  whitelisted symbol in `.github/composer-require-checker.json` belongs to a component that is in
-  `require` and cannot be attributed to it. A *new* `Illuminate` symbol reported there is a prompt
-  to check `require`, not to extend the list. Run it by hand after changing any `use` in `src/`:
+  `composer check`.** `laravel/framework` `replace`s every `illuminate/*` component, so most
+  whitelisted symbols in `.github/composer-require-checker.json` belong to a component that is in
+  `require` and cannot be attributed to it. The three queue and bus symbols are the exception —
+  see the next bullet. A *new* `Illuminate` symbol reported there is a prompt to check `require`,
+  not to extend the list. Run it by hand after changing any `use` in `src/`:
 
   ```bash
   mkdir -p /tmp/crc && composer -d /tmp/crc require maglnet/composer-require-checker
@@ -117,6 +118,16 @@ Read the class docblock before changing it. The short form:
       --config-file=.github/composer-require-checker.json composer.json
   ```
 
+- **`illuminate/queue` and `illuminate/bus` are in `suggest` and `require-dev`, not `require`.**
+  Only `AwaitAction` uses them, and `illuminate/queue` requires `illuminate/database`, so as hard
+  requirements they put the queue and the whole database layer into every application — a Laravel
+  Zero CLI that only reads DNS included. In an empty project, 0.1.0 installed 19 packages and
+  4.9 MB of source that this arrangement does not. **`AwaitAction` cannot raise a friendly error
+  when they are missing**: `Queueable` and `InteractsWithQueue` are traits, so the class fails to
+  load before any of its code runs, and the worker only hands a job its queue handle when the class
+  uses `InteractsWithQueue`, so the traits cannot be dropped. The dev-free PHPStan job does not
+  notice their absence from `require` either — a `--no-dev` install from this repository's lock
+  keeps `laravel/framework`, which supplies them.
 - **`Illuminate\Foundation\Bus\Dispatchable` is deliberately not used on the job.** It lives in
   `Illuminate\Foundation`, which is published only inside `laravel/framework` — the
   `illuminate/foundation` package on Packagist stops at Laravel 4 — so there is no component to

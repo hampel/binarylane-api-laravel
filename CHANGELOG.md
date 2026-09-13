@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+- `illuminate/queue` and `illuminate/bus` are suggested rather than required; `AwaitAction` needs
+  both installed
+- README: Laravel Zero lists `BinaryLaneServiceProvider` in `config/app.php`, imports the facade
+  by class name, and copies the config file rather than publishing it
+
 ## 0.1.0 (2026-09-13)
 
 Initial release.

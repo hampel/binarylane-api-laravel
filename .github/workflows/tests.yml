@@ -106,11 +106,15 @@ jobs:
       # static analysis entirely, because a function from an absent extension looks exactly
       # like one from core.
       #
-      # The whitelist is not a way to silence findings. laravel/framework "replace"s every
-      # illuminate/* component, so a lock that resolved the framework installs no
-      # vendor/illuminate/ at all and those symbols can never be attributed to the component
-      # that declares them. A NEW Illuminate symbol appearing here is a prompt to check its
-      # component is in "require", not to extend the list on sight.
+      # The whitelist is not a way to silence findings, and its entries are there for one of
+      # two reasons. Most are components that ARE in "require": laravel/framework "replace"s
+      # every illuminate/* component, so a lock that resolved the framework installs no
+      # vendor/illuminate/ and those symbols can never be attributed to what declares them.
+      # Three are deliberately NOT required - Illuminate\Bus\Queueable,
+      # Illuminate\Queue\InteractsWithQueue and Illuminate\Queue\Jobs\SyncJob - because only
+      # AwaitAction uses them, and illuminate/queue brings illuminate/database with it; both
+      # components are in "suggest". A NEW Illuminate symbol appearing here is a prompt to
+      # check "require", not to extend the list on sight.
       - run: >
           composer-require-checker check
           --config-file=.github/composer-require-checker.json

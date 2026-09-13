@@ -34,7 +34,11 @@ Laravel Zero works too, with the HTTP component installed (`php <app> app:instal
 binds `Illuminate\Http\Client\Factory` as a singleton in `FoundationServiceProvider`, which a
 Laravel Zero application does not register; unbound, `Http::fake()` silently fails to intercept
 and the request reaches the real API. This package binds one when nothing else has, so the
-behaviour is the same on both. `AwaitAction` additionally needs the queue component.
+behaviour is the same on both.
+
+**`AwaitAction` needs `illuminate/queue` and `illuminate/bus`, which are not installed with this
+package.** A Laravel application has both already. In Laravel Zero, `php <app> app:install queue`
+adds them; without them the job class cannot be loaded, and everything else works.
 
 ## Installation
 
@@ -252,8 +256,11 @@ a 429, a transport failure, a malformed response, or an answer about some other 
 not valid, an action id that does not exist on the account, an account name no longer in the
 configuration. A failed job is reported and lands in `failed_jobs` like any other.
 
-### Three things it needs from the queue
+### Four things it needs from the queue
 
+- **The queue component.** `illuminate/queue` and `illuminate/bus` are suggested rather than
+  required, so an application that never dispatches the job does not install the queue and the
+  database layer it depends on. Without them, loading `AwaitAction` fails with a missing trait.
 - **A real queue connection.** The job polls by releasing itself with a delay, which the `sync`
   driver cannot do, so it raises `QueueRequired` there — on every run, including one where the
   action happened to be finished already, so it cannot appear to work in development and then
