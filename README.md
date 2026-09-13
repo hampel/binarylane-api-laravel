@@ -1,4 +1,4 @@
-# hampel/binarylane-api-laravel
+# BinaryLane API for Laravel
 
 [![Tests](https://github.com/hampel/binarylane-api-laravel/actions/workflows/tests.yml/badge.svg)](https://github.com/hampel/binarylane-api-laravel/actions/workflows/tests.yml)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/hampel/binarylane-api-laravel.svg?style=flat-square)](https://packagist.org/packages/hampel/binarylane-api-laravel)
