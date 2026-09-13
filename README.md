@@ -61,6 +61,10 @@ php artisan vendor:publish --tag=binarylane-config
 The global `BinaryLane` alias is not registered either. Import the facade class —
 `use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;` — or inject `BinaryLaneManager`.
 
+Laravel Zero has no `vendor:publish` either. The environment variables below cover the shipped
+configuration; to change its structure — to add a second account, say — copy
+`vendor/hampel/binarylane-api-laravel/config/binarylane.php` to `config/binarylane.php`.
+
 ## Configuration
 
 An account needs a token and nothing else — there is one BinaryLane, so there is no URL to
