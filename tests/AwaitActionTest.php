@@ -19,6 +19,7 @@ use Hampel\BinaryLane\Api\Laravel\Events\ActionTimedOut;
 use Hampel\BinaryLane\Api\Laravel\Exception\QueueRequired;
 use Hampel\BinaryLane\Api\Laravel\Exception\UnknownAccount;
 use Hampel\BinaryLane\Api\Laravel\Jobs\AwaitAction;
+use Hampel\BinaryLane\Api\Laravel\Tests\Fixture\RecordingLogger;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -190,6 +191,59 @@ final class AwaitActionTest extends TestCase
         $this->handle(new AwaitAction(5001))->assertNotReleased();
 
         Event::assertDispatched(ActionBlocked::class, fn (ActionBlocked $event): bool => $event->action->blockingInvoiceId === 9182);
+    }
+
+    #[Test]
+    public function the_outcomes_that_need_a_person_are_logged_at_warning(): void
+    {
+        // The core package logs nothing above debug from 0.3 on: whoever catches its exceptions
+        // decides whether they are failures. This job catches the failed and blocked ones and
+        // turns them into events, so without a log line of its own an application with no
+        // listener would never hear that an action errored or is waiting on an invoice.
+        Event::fake(self::OUTCOMES);
+
+        $logger = new RecordingLogger();
+
+        Http::fake([
+            'api.binarylane.com.au/v2/actions/5001' => Http::response(self::action(5001, 'errored', ['error_message' => 'Disk full.'])),
+            'api.binarylane.com.au/v2/actions/5002' => Http::response(self::action(5002, 'in-progress', ['blocking_invoice_id' => 9182])),
+            'api.binarylane.com.au/v2/actions/5003' => Http::response(self::action(5003, 'in-progress')),
+        ]);
+
+        $this->handle(new AwaitAction(5001), $logger);
+        $this->handle(new AwaitAction(5002), $logger);
+        $this->handle(new AwaitAction(5003, timeout: 0), $logger);
+
+        $this->assertSame(['warning', 'warning', 'warning'], array_column($logger->records, 'level'));
+
+        $this->assertSame(5001, $logger->records[0]['context']['action'] ?? null);
+        $this->assertSame('Disk full.', $logger->records[0]['context']['reason'] ?? null);
+        $this->assertSame(9182, $logger->records[1]['context']['blocking_invoice_id'] ?? null);
+        $this->assertSame(5003, $logger->records[2]['context']['action'] ?? null);
+        $this->assertStringContainsString('was not cancelled', $logger->records[2]['message']);
+    }
+
+    #[Test]
+    public function a_completed_action_logs_nothing_and_no_log_line_carries_a_token(): void
+    {
+        Event::fake(self::OUTCOMES);
+
+        $logger = new RecordingLogger();
+
+        Http::fake([
+            'api.binarylane.com.au/v2/actions/5001' => Http::response(self::action(5001, 'completed')),
+            'api.binarylane.com.au/v2/actions/5002' => Http::response(self::action(5002, 'errored')),
+        ]);
+
+        $this->handle(new AwaitAction(5001), $logger);
+
+        $this->assertSame([], $logger->records);
+
+        $this->handle(new AwaitAction(5002), $logger);
+
+        $this->assertCount(1, $logger->records);
+
+        $this->assertStringNotContainsString('token-under-test', (string) json_encode($logger->records));
     }
 
     #[Test]
@@ -475,21 +529,21 @@ final class AwaitActionTest extends TestCase
      * One attempt, as a worker makes it: a fake queue job that records what the job did with
      * itself, then handle().
      */
-    private function handle(AwaitAction $job): AwaitAction
+    private function handle(AwaitAction $job, ?LoggerInterface $logger = null): AwaitAction
     {
         $job->withFakeQueueInteractions();
 
-        $this->runHandle($job);
+        $this->runHandle($job, $logger);
 
         return $job;
     }
 
-    private function runHandle(AwaitAction $job): void
+    private function runHandle(AwaitAction $job, ?LoggerInterface $logger = null): void
     {
         $job->handle(
             $this->container()->make(BinaryLaneManager::class),
             $this->container()->make(Dispatcher::class),
-            $this->container()->bound(LoggerInterface::class) ? $this->container()->make(LoggerInterface::class) : new NullLogger(),
+            $logger ?? new NullLogger(),
         );
     }
 }

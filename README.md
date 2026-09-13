@@ -266,6 +266,11 @@ a 429, a transport failure, a malformed response, or an answer about some other 
 not valid, an action id that does not exist on the account, an account name no longer in the
 configuration. A failed job is reported and lands in `failed_jobs` like any other.
 
+**A failed, blocked or timed-out action is also logged at `warning`**, with the account, the action
+id, its type and the resource it acts on. The events are the structured report; the log line is
+there so an application that listens for none of them still hears about the outcomes that need a
+person. A completed action is not logged.
+
 ### Four things it needs from the queue
 
 - **The queue component.** `illuminate/queue` and `illuminate/bus` are suggested rather than
@@ -359,13 +364,14 @@ with its own outbound HTTP policy makes this package use it.
 **`RequestSending` fires; `ResponseReceived` and `ConnectionFailed` do not.** Laravel raises the
 first from inside the handler stack this package sends through, and the other two from a layer
 above it. So Telescope's HTTP client watcher, which listens for `ResponseReceived`, will not show
-this traffic. The core package logs every request at `debug` and every failure at `error` through
-PSR-3, which reaches the application log. The token is never logged.
+this traffic. The core package logs every request at `debug` through PSR-3, which reaches the
+application log, and logs nothing above `debug`: a failure arrives as an exception, and logging it
+is the catcher's decision. The token is never logged.
 
 ## Versioning
 
 `hampel/binarylane-api` is 0.x, so its public API can change in a minor release; this package
-constrains it at `^0.2` and expects to bump.
+constrains it at `^0.3` and expects to bump.
 
 ## License
 

@@ -97,8 +97,8 @@ use Psr\Http\Message\ResponseInterface;
  * - Telescope's HTTP client watcher - will not show this traffic. RequestSending DOES fire,
  * because Laravel raises it from a before-sending callback inside the stack; a listener that
  * counts requests on it and matches them to responses will count requests that never get one.
- * The core package logs every request through PSR-3 at debug level, and every failure at
- * error, which under Laravel reaches the application log.
+ * The core package logs every request through PSR-3 at debug level and nothing above it:
+ * failures arrive as exceptions, and whoever catches one decides whether to log it.
  */
 final class PendingRequestClient implements ClientInterface
 {

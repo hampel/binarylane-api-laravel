@@ -70,6 +70,12 @@ Read the class docblock before changing it. The short form:
 - **Outcomes are events, and the job succeeds for all four.** An errored action, a blocked one and
   one past the deadline are observations, not job failures — a failed job would be retried by
   `queue:retry` to get the same answer.
+- **Those three are also logged at `warning`, by the job.** From core 0.3 the core logs nothing
+  above `debug` — the catcher decides whether an exception is a failure — and this job catches
+  `ActionFailedException` and `ActionBlockedException`. Without its own line, an application
+  listening for no events would never hear that a rebuild errored. The context carries names and
+  ids only. `AwaitActionTest::the_outcomes_that_need_a_person_are_logged_at_warning` was probed by
+  downgrading the three calls to `debug`.
 - **Failures to find out are split by exception type.** 5xx, 429, transport and malformed
   responses release until the deadline, honouring `Retry-After`; everything else calls
   `$this->fail()` and rethrows. Both halves matter: `fail()` stops the worker releasing it forever

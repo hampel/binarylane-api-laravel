@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Unreleased
+
+- Requires `hampel/binarylane-api` `^0.3`
+- `AwaitAction` logs a failed, blocked or timed-out action at `warning`
+- Requests are sent through the HTTP client factory the container holds at the time of sending, so
+  `Http::swap()` in a test is followed, including its `preventStrayRequests()`
+- The configured `timeout` and `connect_timeout`, and transport settings from
+  `Http::globalOptions()`, are applied to requests; global headers, `auth`, `query` and body
+  options are not
+- README: an application's own `config/binarylane.php` overrides this package's keys of the same
+  name
+
 ## 0.2.0 (2026-09-13)
 
 - `illuminate/queue` and `illuminate/bus` are suggested rather than required; `AwaitAction` needs

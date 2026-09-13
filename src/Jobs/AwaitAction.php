@@ -64,13 +64,20 @@ use Throwable;
  *  - past the deadline  ActionTimedOut.    The job succeeds. NOTHING WAS CANCELLED - the
  *                                          action is still running, and a new job will find it.
  *
+ * THE LAST THREE ARE ALSO LOGGED, AT WARNING, and that is this job's decision rather than an
+ * echo of the core package's. The core package logs nothing above debug: whoever catches one
+ * of its exceptions decides whether it is a failure. This job catches ActionFailedException and
+ * ActionBlockedException and turns them into events, so without a log line of its own an
+ * application with no listener for those events would never hear that a rebuild errored or
+ * that an action is waiting on an unpaid invoice. A completed action is not logged.
+ *
  * AND WHEN IT CANNOT FIND OUT. A request that failed in a way the next poll may not repeat - a
  * 5xx, a 429, a transport failure, a malformed body, or an answer about some other action - is
  * logged and polled again after `$interval`, or after the API's `Retry-After` when that is
- * longer, until the deadline; past it, the job fails. Anything else fails the job at once, because asking again will not
- * change it: a token that is not valid, an action id that does not exist on this account, a
- * configuration that names no such account. A failed job is reported and lands in the failed
- * jobs table like any other.
+ * longer, until the deadline; past it, the job fails. Anything else fails the job at once,
+ * because asking again will not change it: a token that is not valid, an action id that does
+ * not exist on this account, a configuration that names no such account. A failed job is
+ * reported and lands in the failed jobs table like any other.
  *
  * `$tries` IS 0, WHICH IS UNLIMITED, AND IT HAS TO BE. Every release counts as an attempt, and
  * `queue:work` defaults to `--tries=1` - so without this the second poll would fail with
@@ -207,9 +214,20 @@ final class AwaitAction implements ShouldQueue
         }
 
         if ($outcome === null) {
-            $this->pollAgainOrGiveUp($account, $action, $events);
+            $this->pollAgainOrGiveUp($account, $action, $events, $logger);
 
             return;
+        }
+
+        if ($outcome instanceof ActionFailed) {
+            $logger->warning('BinaryLane action failed', $this->context($account, $action) + [
+                'reason' => $action->failureReason(),
+            ]);
+        } elseif ($outcome instanceof ActionBlocked) {
+            $logger->warning('BinaryLane action is blocked and will not continue on its own', $this->context($account, $action) + [
+                'waiting_on' => $action->needsInteraction() ? $action->userInteractionRequired?->question() : null,
+                'blocking_invoice_id' => $action->blockingInvoiceId,
+            ]);
         }
 
         $events->dispatch($outcome);
@@ -237,12 +255,19 @@ final class AwaitAction implements ShouldQueue
         return $this->interval;
     }
 
-    private function pollAgainOrGiveUp(string $account, Action $action, Dispatcher $events): void
+    private function pollAgainOrGiveUp(string $account, Action $action, Dispatcher $events, LoggerInterface $logger): void
     {
         $remaining = $this->deadline - $this->currentTime();
 
         if ($remaining <= 0) {
-            $events->dispatch(new ActionTimedOut($account, $action, $this->currentTime() - $this->dispatchedAt));
+            $waited = $this->currentTime() - $this->dispatchedAt;
+
+            $logger->warning('Gave up waiting for a BinaryLane action; it is still running and was not cancelled', $this->context($account, $action) + [
+                'waited' => $waited,
+                'percent_complete' => $action->progress?->percentComplete,
+            ]);
+
+            $events->dispatch(new ActionTimedOut($account, $action, $waited));
 
             return;
         }
@@ -274,5 +299,21 @@ final class AwaitAction implements ShouldQueue
         ]);
 
         $this->release(min($delay, $remaining));
+    }
+
+    /**
+     * What every log line about an outcome carries. An account name and an action - never a
+     * client or a credential.
+     *
+     * @return array{account: string, action: int, type: string, resource_id: int|null}
+     */
+    private function context(string $account, Action $action): array
+    {
+        return [
+            'account' => $account,
+            'action' => $action->id,
+            'type' => $action->type,
+            'resource_id' => $action->resourceId,
+        ];
     }
 }
