@@ -19,8 +19,7 @@ Initial release.
 - `AwaitAction` retries 5xx, 429, transport and malformed responses, and answers about a different
   action, until its deadline, honouring `Retry-After`; it fails at once on any other exception
 - `QueueRequired` is raised when `AwaitAction` runs on the `sync` driver or without a queue job
-- `Illuminate\Http\Client\Factory` is bound as a singleton when the application has not bound one,
-  as a Laravel Zero application does not
+- `Illuminate\Http\Client\Factory` is bound as a singleton when the application has not bound one
 - `Psr\Http\Client\ClientInterface` is bound separately: rebind it to route the package's requests
   through an application's own HTTP client
 - `per_page` and `base_uri` are top-level settings shared by every account's client; a `per_page`
