@@ -45,8 +45,8 @@ the Laravel 12 CI job is the one that catches their removal.
 
 And **the pending request's own options are passed on by hand, from an allowlist.** `send()` on the
 built client never reads them — `PendingRequest` merges them only inside its own `sendRequest()` —
-so before this the configured `timeout` and `connect_timeout`, and every `Http::globalOptions()`
-setting, silently never reached a request. `transportOptions()` passes timeouts, TLS, proxy,
+so without this the configured `timeout` and `connect_timeout`, and every `Http::globalOptions()`
+setting, silently never reach a request. `transportOptions()` passes timeouts, TLS, proxy,
 protocol version and curl settings, each only when its value has the type Guzzle declares, and
 never `headers`, `auth`, `query` or a body, which would rewrite the core package's request.
 `TransportTest` pins both halves; each was probed by breaking it — nothing passed fails the two
@@ -93,8 +93,11 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **An empty or envelope-less success raises, and a bodiless 202 does not.** The core package
-  draws that line from `^0.2` onwards, which is why the constraint cannot go lower. The two raising
+- **The core constraint is `^0.3`, and both of the core's recent behaviours are load-bearing.**
+  From 0.3 the core logs nothing above `debug`, which is why `AwaitAction` logs its own outcomes;
+  on 0.2 those lines would be doubled.
+- **An empty or envelope-less success raises, and a bodiless 202 does not** — the core package's
+  line since 0.2. The two raising
   cases arrive by different paths with different messages, so `ExceptionPassthroughTest` pins each
   on its own; `HttpFakeTest::a_bodiless_202_is_an_action_that_is_not_there` pins the arm that must
   stay silent.
