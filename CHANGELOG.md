@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 0.4.0 (2026-09-14)
 
 **Breaking:** the transport override point moves from `Psr\Http\Client\ClientInterface` to
 `binarylane.http_client`.
