@@ -127,10 +127,30 @@ compares that block with `Client`'s public methods in both directions and checks
 type resolves, including through an aliased import. The manager gets the same coverage from one
 `@mixin Client` line.
 
-## A harness is not here yet, and this package is the case that could earn one
+## No harness, because what the suite cannot see is the API, not the container
 
-Testbench sees the container wiring, and `QueueWorkerTest` drives the real worker against faked
-HTTP. What neither can see is the job against a real account — whether a real action's polling
-ends the way the fakes say it does. The core package's harness drives live API calls; a live
-check of this package belongs in an application with a real queue rather than in a harness that
-would need Laravel inside it.
+`AwaitAction` is a queue-worker interaction with its own retry policy, which is the usual case
+for giving a Laravel package a harness. It does not get one, and the reason is where the gap
+actually is.
+
+**The worker is already seen.** `QueueWorkerTest` runs the real `queue:work` against a real
+database queue, and removing `$tries = 0` turns it red. A harness would add nothing there.
+
+**BinaryLane is not seen, and a harness is the wrong place to look.** Every fake in the suite
+encodes an assumption about the API: how a real action moves from `in-progress` to finished,
+whether a server action answers with its 202 or its 200, how long polling takes. A harness here
+would need Laravel inside it, so it could no longer catch an undeclared dependency, and it would
+reach the same API the core package's own harness already drives, through a thicker stack.
+
+**So the live check is a scratch application, run by hand before a release that changes the
+job.** A current Laravel install with this package required, a database queue and a real
+worker, dispatching `AwaitAction` for a read-only question action on a real server and watching
+which event arrives. Use `is_running` or `uptime` through `serverActions()->perform()` — they
+change nothing. Two things to expect rather than discover:
+
+- **A question action answers "no" by erroring.** `is_running` on a stopped server fires
+  `ActionFailed`, which is the core package's complete-or-error pattern arriving intact, not a
+  defect in the job — and, as the core package documents on `ServerActions::ask()`, an errored
+  question cannot be told apart from a check that itself failed.
+- **It needs a real token, and a BinaryLane token can do anything its account can.** Keep the
+  scratch application away from anything that would dispatch a mutating action.
