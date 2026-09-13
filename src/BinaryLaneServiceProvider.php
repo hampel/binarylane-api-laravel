@@ -61,10 +61,13 @@ final class BinaryLaneServiceProvider extends ServiceProvider
         $this->app->singleton(ClientInterface::class, function (): ClientInterface {
             $config = $this->app->make(Config::class);
 
-            // The same Factory instance the Http facade resolves, which is what puts this
-            // package's requests among the ones Http::fake() and Http::assertSent() see.
+            // The Factory the Http facade resolves, read on every send rather than once here:
+            // that is what puts this package's requests among the ones Http::fake() and
+            // Http::assertSent() see, including after Http::swap() replaces the factory.
+            $app = $this->app;
+
             return new PendingRequestClient(
-                $this->app->make(HttpClientFactory::class),
+                static fn (): HttpClientFactory => $app->make(HttpClientFactory::class),
                 $this->seconds($config->get('binarylane.timeout'), 10.0),
                 $this->seconds($config->get('binarylane.connect_timeout'), 5.0),
             );

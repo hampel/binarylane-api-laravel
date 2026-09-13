@@ -326,8 +326,9 @@ The package's real code path runs; only the socket is replaced. So a faked 404 s
 - **Server actions are told apart by their body.** They are all one `POST` to
   `servers/{id}/actions`, so assert on `$request['type']`, which works because the core package
   writes `application/json`.
-- **Order does not matter.** Faking after the client has been resolved works, because the
-  transport reads Laravel's HTTP factory at the moment of sending.
+- **Order does not matter.** Faking after the client has been resolved works, and so does
+  `Http::swap(new Factory)` to start a test from a clean set of fakes: the transport looks the
+  factory up at the moment of sending.
 
 To test your own handling of `AwaitAction`, call `handle()` on a job with fake queue interactions,
 which records releases and failures rather than ignoring them:

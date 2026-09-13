@@ -8,6 +8,7 @@ use Hampel\BinaryLane\Api\Authentication\ApiToken;
 use Hampel\BinaryLane\Api\Entity\Server;
 use Hampel\BinaryLane\Api\Exception\NotFoundException;
 use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\StrayRequestException;
 use Illuminate\Support\Facades\Http;
@@ -107,6 +108,45 @@ final class HttpFakeTest extends TestCase
         ]);
 
         $this->assertSame('late.example.test', $client->servers()->get(4321)->name);
+    }
+
+    #[Test]
+    public function swapping_the_factory_after_the_client_was_resolved_still_intercepts(): void
+    {
+        // Http::swap(new Factory) is how a test gets a clean set of fakes, because fake()
+        // merges and the first match wins. swap() binds the new factory into the container, so
+        // a transport that held the factory it was built with would keep answering from the old
+        // one - PendingRequestClient resolves it at the moment of sending instead.
+        $client = BinaryLane::client();
+
+        Http::fake(['api.binarylane.com.au/*' => Http::response(['server' => self::server(1, ['name' => 'before.example.test'])])]);
+        $this->assertSame('before.example.test', $client->servers()->get(1)->name);
+
+        Http::swap(new Factory());
+        Http::fake(['api.binarylane.com.au/*' => Http::response(['server' => self::server(1, ['name' => 'after.example.test'])])]);
+
+        $this->assertSame('after.example.test', $client->servers()->get(1)->name);
+    }
+
+    #[Test]
+    public function a_swapped_factorys_stray_request_guard_applies_to_a_client_resolved_before_it(): void
+    {
+        // The dangerous half of the same property. preventStrayRequests() is set on the NEW
+        // factory; a transport still holding the old, unfaked one would send the request for
+        // real, carrying the configured token, with nothing to stop it.
+        //
+        // Pointed at a reserved .invalid host, so that if this ever regresses the escaped
+        // request fails to resolve instead of reaching BinaryLane.
+        $this->container()->make('config')->set('binarylane.base_uri', 'https://api.binarylane.invalid');
+
+        $client = BinaryLane::client();
+
+        Http::swap(new Factory());
+        Http::preventStrayRequests();
+
+        $this->expectException(StrayRequestException::class);
+
+        $client->servers()->get(1);
     }
 
     #[Test]

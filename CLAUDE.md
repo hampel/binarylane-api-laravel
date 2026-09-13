@@ -35,7 +35,9 @@ while the core package's request building, status mapping and exception hierarch
 
 Three decisions in the adapter are load-bearing, and its docblock carries the reasoning for each:
 the pending request is **rebuilt on every send** (`Factory::fake()` replaces the stub collection,
-so a cached request holds a snapshot); **one Guzzle handler is shared** across those rebuilds so
+so a cached request holds a snapshot), from a factory **resolved from the container on every
+send** (`Http::swap()` rebinds it there, and a held factory sent past the new fakes and the new
+`preventStrayRequests()` for real); **one Guzzle handler is shared** across those rebuilds so
 keep-alive survives; and it calls **`send()` with four options set by hand**, because Laravel 12
 reads `laravel_data` and `on_stats` without a default and `http_errors` must stay off or a 404
 arrives as a transport failure. **Laravel 13 reads the first two defensively and 12 does not**, so
