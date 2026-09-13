@@ -28,12 +28,16 @@ composer format         # pint
 
 ## The transport lives under `binarylane.http_client`, never the shared PSR-18 key
 
-**The provider binds `PendingRequestClient` under `BinaryLaneServiceProvider::HTTP_CLIENT` and
-builds the manager from that key alone.** It does not bind `Psr\Http\Client\ClientInterface`, and
-does not read it. That key is shared: every API wrapper that bound it with `singleton()` replaced
-the one before, so in an application with several wrappers installed the last provider registered
-supplied the transport — and the timeouts — for all of them. Measured in a real application with
-three wrappers installed, where one package's `timeout` governed another's requests.
+**The provider binds `PendingRequestClient` under `BinaryLaneServiceProvider::HTTP_CLIENT` with
+`singletonIf()`, and builds the manager from that key alone.** `singletonIf()` because Laravel Zero
+lists `AppServiceProvider` before a package provider, so `singleton()` would silently replace an
+application's override there; `HttpClientOverrideTest` fails with `singleton()`.
+
+It does not bind `Psr\Http\Client\ClientInterface`, and does not read it. That key is shared:
+every API wrapper that bound it with `singleton()` replaced the one before, so in an application
+with several wrappers installed the last provider registered supplied the transport — and the
+timeouts — for all of them. Measured in a real application with three wrappers installed, where
+one package's `timeout` governed another's requests.
 
 **Do not add a fallback to `ClientInterface` when it is bound.** It reads as a kindness to an
 application with its own client, and brings the collision straight back: an older wrapper, or an

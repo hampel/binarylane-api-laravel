@@ -73,7 +73,13 @@ final class BinaryLaneServiceProvider extends ServiceProvider
         $this->app->bindIf(RequestFactoryInterface::class, static fn (): RequestFactoryInterface => new Psr17Factory());
         $this->app->bindIf(StreamFactoryInterface::class, static fn (): StreamFactoryInterface => new Psr17Factory());
 
-        $this->app->singleton(self::HTTP_CLIENT, function (): ClientInterface {
+        // singletonIf, so an application's override survives whichever order the providers
+        // register in. A full Laravel application registers its own providers after discovered
+        // ones, so its override would win anyway; Laravel Zero runs no discovery, and its
+        // config/app.php lists AppServiceProvider before a package provider added after it -
+        // where singleton() would replace the override without a word. No other package binds
+        // this key, so it cannot bring back the shared-binding collision.
+        $this->app->singletonIf(self::HTTP_CLIENT, function (): ClientInterface {
             $config = $this->app->make(Config::class);
 
             // The Factory the Http facade resolves, read on every send rather than once here:

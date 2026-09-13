@@ -365,6 +365,10 @@ use Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider;
 $this->app->singleton(BinaryLaneServiceProvider::HTTP_CLIENT, fn () => $myPsr18Client);
 ```
 
+The package binds that key only if nothing has already, so the override works from any service
+provider, whether it registers before or after this package's — including `AppServiceProvider` in
+a Laravel Zero `config/app.php`, where it is listed first.
+
 **This package does not use a `Psr\Http\Client\ClientInterface` binding**, yours or another
 package's, and does not bind that key itself. It is one key shared by every package that uses it,
 so an application with several API integrations installed would otherwise get whichever

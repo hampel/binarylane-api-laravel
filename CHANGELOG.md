@@ -9,6 +9,8 @@
   (`binarylane.http_client`), and `BinaryLaneManager` is built from that key alone
 - The provider no longer binds `Psr\Http\Client\ClientInterface`, and a binding of it no longer
   replaces this package's transport
+- `binarylane.http_client` is bound only when nothing has bound it already, so an application's
+  override applies whichever order the providers register in
 - `InvalidConfiguration` is raised when `binarylane.http_client` does not resolve to a PSR-18 client
 
 ## 0.3.0 (2026-09-14)
