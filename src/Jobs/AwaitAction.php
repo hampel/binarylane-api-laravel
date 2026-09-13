@@ -65,9 +65,9 @@ use Throwable;
  *                                          action is still running, and a new job will find it.
  *
  * AND WHEN IT CANNOT FIND OUT. A request that failed in a way the next poll may not repeat - a
- * 5xx, a 429, a transport failure, a body that was not JSON or not an action - is logged and
- * polled again after `$interval`, or after the API's `Retry-After` when that is longer, until
- * the deadline; past it, the job fails. Anything else fails the job at once, because asking again will not
+ * 5xx, a 429, a transport failure, a malformed body, or an answer about some other action - is
+ * logged and polled again after `$interval`, or after the API's `Retry-After` when that is
+ * longer, until the deadline; past it, the job fails. Anything else fails the job at once, because asking again will not
  * change it: a token that is not valid, an action id that does not exist on this account, a
  * configuration that names no such account. A failed job is reported and lands in the failed
  * jobs table like any other.
@@ -167,36 +167,18 @@ final class AwaitAction implements ShouldQueue
 
         try {
             $action = $binarylane->client($account)->actions()->await($this->actionId, 0, $this->interval);
+            $outcome = new ActionCompleted($account, $action);
         } catch (ActionFailedException $e) {
-            $events->dispatch(new ActionFailed($account, $e->action));
-
-            return;
+            $action = $e->action;
+            $outcome = new ActionFailed($account, $action);
         } catch (ActionBlockedException $e) {
-            $events->dispatch(new ActionBlocked($account, $e->action));
-
-            return;
+            $action = $e->action;
+            $outcome = new ActionBlocked($account, $action);
         } catch (ActionTimedOutException $e) {
             // A timeout of 0 is "check once", so this is the core package saying the action is
             // still running - not that anything has timed out yet.
-            //
-            // Unless it is not an action at all. An empty 2xx, or a JSON body without the
-            // `action` envelope, reaches here as an action with an id of 0 and no status - which
-            // await() cannot tell from one still running. Read as running, a maintenance page
-            // would be polled to the deadline and reported as a timed-out action #0.
-            if ($e->action->id !== $this->actionId || $e->action->status === null) {
-                $this->retryOrFail(new RuntimeException(sprintf(
-                    'BinaryLane answered a request for action #%d with something that is not that '
-                        . 'action: no status, and an id of %d.',
-                    $this->actionId,
-                    $e->action->id
-                )), $logger);
-
-                return;
-            }
-
-            $this->pollAgainOrGiveUp($account, $e->action, $events);
-
-            return;
+            $action = $e->action;
+            $outcome = null;
         } catch (ServerException | TooManyRequestsException | RequestException | MalformedResponseException $e) {
             $this->retryOrFail($e, $logger);
 
@@ -210,7 +192,27 @@ final class AwaitAction implements ShouldQueue
             throw $e;
         }
 
-        $events->dispatch(new ActionCompleted($account, $action));
+        // Checked before ANY outcome, not only a running one. The core package proves the
+        // response is shaped like an action; it does not prove it is the action that was asked
+        // for, and an answer about a different one - a misrouted proxy, a cached response -
+        // would otherwise fire an event reporting that action's outcome as this one's.
+        if ($action->id !== $this->actionId) {
+            $this->retryOrFail(new RuntimeException(sprintf(
+                'BinaryLane answered a request for action #%d with action #%d.',
+                $this->actionId,
+                $action->id
+            )), $logger);
+
+            return;
+        }
+
+        if ($outcome === null) {
+            $this->pollAgainOrGiveUp($account, $action, $events);
+
+            return;
+        }
+
+        $events->dispatch($outcome);
     }
 
     /**

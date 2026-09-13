@@ -16,8 +16,8 @@ Initial release.
   polls, until it completes, errors, is blocked or reaches its deadline
 - `ActionCompleted`, `ActionFailed`, `ActionBlocked` and `ActionTimedOut` events report how an
   awaited action ended
-- `AwaitAction` retries 5xx, 429, transport and malformed responses until its deadline, honouring
-  `Retry-After`, and fails at once on any other exception
+- `AwaitAction` retries 5xx, 429, transport and malformed responses, and answers about a different
+  action, until its deadline, honouring `Retry-After`; it fails at once on any other exception
 - `QueueRequired` is raised when `AwaitAction` runs on the `sync` driver or without a queue job
 - `Illuminate\Http\Client\Factory` is bound as a singleton when the application has not bound one,
   as a Laravel Zero application does not
@@ -27,4 +27,4 @@ Initial release.
   below 1 is refused
 - `UnknownAccount`, `InvalidConfiguration` and `QueueRequired` extend the core package's
   `BinaryLaneException`
-- Requires `hampel/binarylane-api` `^0.1`, PHP 8.3, and Laravel 12 or 13
+- Requires `hampel/binarylane-api` `^0.2`, PHP 8.3, and Laravel 12 or 13

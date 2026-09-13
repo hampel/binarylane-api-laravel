@@ -6,6 +6,7 @@ namespace Hampel\BinaryLane\Api\Laravel\Tests;
 
 use Hampel\BinaryLane\Api\Entity\Action;
 use Hampel\BinaryLane\Api\Exception\InvalidArgumentException;
+use Hampel\BinaryLane\Api\Exception\MalformedResponseException;
 use Hampel\BinaryLane\Api\Exception\NotAuthenticatedException;
 use Hampel\BinaryLane\Api\Exception\NotFoundException;
 use Hampel\BinaryLane\Api\Exception\RuntimeException;
@@ -289,22 +290,23 @@ final class AwaitActionTest extends TestCase
     }
 
     #[Test]
-    public function a_response_that_is_not_an_action_is_polled_again_rather_than_read_as_running(): void
+    public function a_malformed_response_is_polled_again_rather_than_failing_the_job(): void
     {
-        // An empty 2xx reaches the core package's await() as an action with an id of 0 and no
-        // status - indistinguishable there from one still running. Read that way, a
-        // maintenance page would be polled to the deadline and reported as a timed-out
-        // action #0. Here it is an unreadable response: retried, and logged.
+        // A maintenance page, a proxy's empty 200, a body without the `action` envelope: the
+        // core package raises MalformedResponseException for all three, and one of them on the
+        // next poll may well be the real answer.
         Event::fake(self::OUTCOMES);
         Http::fake(['api.binarylane.com.au/*' => Http::response('', 200)]);
 
-        $this->handle(new AwaitAction(5001, interval: 15))->assertReleased(15);
+        $job = $this->handle(new AwaitAction(5001, interval: 15));
 
+        $job->assertReleased(15);
+        $job->assertNotFailed();
         Event::assertNothingDispatched();
     }
 
     #[Test]
-    public function a_response_that_is_not_an_action_past_the_deadline_fails_the_job(): void
+    public function a_malformed_response_past_the_deadline_fails_the_job(): void
     {
         Http::fake(['api.binarylane.com.au/*' => Http::response(['unexpected' => true])]);
 
@@ -314,9 +316,43 @@ final class AwaitActionTest extends TestCase
 
         try {
             $this->runHandle($job);
+            $this->fail('Expected a MalformedResponseException.');
+        } catch (MalformedResponseException $e) {
+            $this->assertStringContainsString('"action" key', $e->getMessage());
+            $job->assertFailedWith(MalformedResponseException::class);
+        }
+    }
+
+    #[Test]
+    public function an_answer_about_a_different_action_fires_nothing_for_this_one(): void
+    {
+        // The core package proves a response is shaped like an action, not that it is the
+        // action asked for. A misrouted or cached answer about another one must not report
+        // that action's outcome as this one's - checked for every outcome, completed included.
+        Event::fake(self::OUTCOMES);
+        Http::fake(['api.binarylane.com.au/*' => Http::response(self::action(7777, 'completed'))]);
+
+        $job = $this->handle(new AwaitAction(5001, interval: 15));
+
+        $job->assertReleased(15);
+        $job->assertNotFailed();
+        Event::assertNothingDispatched();
+    }
+
+    #[Test]
+    public function an_answer_about_a_different_action_past_the_deadline_fails_the_job(): void
+    {
+        Http::fake(['api.binarylane.com.au/*' => Http::response(self::action(7777, 'in-progress'))]);
+
+        $job = (new AwaitAction(5001, timeout: 60))->withFakeQueueInteractions();
+
+        $this->travel(61)->seconds();
+
+        try {
+            $this->runHandle($job);
             $this->fail('Expected a RuntimeException.');
         } catch (RuntimeException $e) {
-            $this->assertStringContainsString('not that action', $e->getMessage());
+            $this->assertSame('BinaryLane answered a request for action #5001 with action #7777.', $e->getMessage());
             $job->assertFailedWith(RuntimeException::class);
         }
     }

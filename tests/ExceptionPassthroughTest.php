@@ -119,22 +119,32 @@ final class ExceptionPassthroughTest extends TestCase
     }
 
     #[Test]
-    public function faking_with_no_arguments_reads_as_an_account_with_no_servers(): void
+    public function faking_with_no_arguments_fails_loudly_rather_than_reporting_an_empty_account(): void
     {
-        // Pinned as the core package behaves today, which is not how it should: Http::fake()
-        // with no arguments answers every request with an empty 200, and hampel/binarylane-api
-        // 0.1 reads any 2xx with an empty body as an empty response - not only the bodiless
-        // 202 and 204 the API sends on purpose. So a forgotten fixture reports an account with
-        // no servers rather than failing. The README tells consumers to give every fake a
-        // body for this reason, and AwaitAction refuses to read such a response as an action.
-        //
-        // When the core package raises MalformedResponseException here instead, this test
-        // fails and should be inverted.
+        // Http::fake() with no arguments answers every request with an empty 200 - the easiest
+        // mistake to make in a consumer's suite. Only a 202 and a 204 are successes with no body
+        // on this API, so a forgotten fixture raises rather than reporting an account with no
+        // servers.
         Http::fake();
 
-        $page = BinaryLane::servers()->list();
+        $this->expectException(MalformedResponseException::class);
+        $this->expectExceptionMessage('the body was empty');
 
-        $this->assertCount(0, $page);
-        $this->assertSame(0, $page->total);
+        BinaryLane::servers()->list();
     }
+
+    #[Test]
+    public function a_body_without_its_envelope_key_is_not_an_empty_account_either(): void
+    {
+        // The other half of the same failure, and a different message: a body that parsed but
+        // is not the collection asked for. Pinned separately because the two arrive by
+        // different paths in the core package and could regress independently.
+        Http::fake(['api.binarylane.com.au/*' => Http::response(['unexpected' => true])]);
+
+        $this->expectException(MalformedResponseException::class);
+        $this->expectExceptionMessage('without the expected "servers" key');
+
+        BinaryLane::servers()->list();
+    }
+
 }

@@ -63,9 +63,11 @@ Read the class docblock before changing it. The short form:
   responses release until the deadline, honouring `Retry-After`; everything else calls
   `$this->fail()` and rethrows. Both halves matter: `fail()` stops the worker releasing it forever
   under unlimited tries, and the rethrow keeps the exception reaching the application's handler.
-- **A response that is not the action asked for is treated as malformed.** The core package reads
-  an empty 2xx, or JSON without the `action` envelope, as an action with id 0 and no status, which
-  `await()` cannot tell from one still running. See the next section.
+- **An answer about a different action is retried like a malformed response, whatever its
+  status.** The core package proves a body is shaped like an action, not that it is the one asked
+  for, so the id check runs before every outcome rather than only a running one — otherwise a
+  misrouted or cached answer would fire `ActionCompleted` for somebody else's action. It is
+  probed: disabling the check fails both `an_answer_about_a_different_action_*` tests.
 - **The payload holds an account name, never a client or token.** BinaryLane tokens are unscoped
   and do not expire.
 - **The events share no parent class.** Laravel's dispatcher matches listeners by class and by
@@ -74,12 +76,13 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **The core package 0.1 reads any empty-bodied 2xx as an empty response**, not only the 202 and
-  204 BinaryLane sends on purpose, and a JSON body missing its envelope key as a blank entity. So
-  `Http::fake()` with no arguments makes `servers()->list()` report an account with no servers.
-  `ExceptionPassthroughTest::faking_with_no_arguments_reads_as_an_account_with_no_servers` pins
-  the current behaviour; **invert it when the core package raises instead**, and update the README
-  testing bullet with it.
+- **The constraint is `^0.2` because 0.1 read a malformed success as an empty one.** In 0.1 an
+  empty-bodied 2xx became an empty response and a body without its envelope key a blank entity, so
+  `Http::fake()` with no arguments reported an account with no servers. 0.2.0 raises
+  `MalformedResponseException` for both, with different messages — "the body was empty" and
+  `without the expected "servers" key`. `ExceptionPassthroughTest` pins each separately, and
+  `HttpFakeTest::a_bodiless_202_is_an_action_that_is_not_there` pins the 202 that must still not
+  raise.
 - **A `per_page` of 0 is refused by the manager although the core `Config` accepts it.** It is the
   API's count-only request, meaningful once and never as a default.
 - **The named-account accessor is `client()` because `account()` and `connection()` are taken** by

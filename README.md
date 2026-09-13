@@ -229,8 +229,8 @@ interface, never by parent class, so a listener on a common base would hear noth
 ### When it cannot find out, it retries or fails
 
 **A poll that failed in a way the next one may not repeat is retried until the deadline** — a 5xx,
-a 429, a transport failure, or a response that is not an action at all. A 429's `Retry-After` is
-honoured when it is longer than the interval. Past the deadline, the job fails.
+a 429, a transport failure, a malformed response, or an answer about some other action. A 429's
+`Retry-After` is honoured when it is longer than the interval. Past the deadline, the job fails.
 
 **Anything else fails the job at once**, because asking again will not change it: a token that is
 not valid, an action id that does not exist on the account, an account name no longer in the
@@ -296,8 +296,8 @@ The package's real code path runs; only the socket is replaced. So a faked 404 s
 `MalformedResponseException`.
 
 - **Give every fake a body.** `Http::fake()` with no arguments answers every request with an empty
-  200, and `hampel/binarylane-api` 0.1 reads an empty 2xx as an empty response — so a forgotten
-  fixture reports *this account has no servers* rather than failing.
+  200, which raises `MalformedResponseException` — only a 202 and a 204 are successes with no body
+  on this API. A body without the expected envelope key raises it too.
 - **Anything that awaits needs one response per poll.** Queue them with `Http::fakeSequence()`,
   and pass `await()` a `wait:` callable so the test does not sleep.
 - **Server actions are told apart by their body.** They are all one `POST` to
@@ -331,7 +331,7 @@ PSR-3, which reaches the application log. The token is never logged.
 ## Versioning
 
 `hampel/binarylane-api` is 0.x, so its public API can change in a minor release; this package
-constrains it at `^0.1` and expects to bump.
+constrains it at `^0.2` and expects to bump.
 
 ## License
 
