@@ -75,6 +75,23 @@ use Psr\Http\Message\ResponseInterface;
  * as a Guzzle exception, and the core package would report it as a transport failure instead
  * of mapping it to NotFoundException.
  *
+ * THE PENDING REQUEST'S OWN OPTIONS ARE PASSED ON BY HAND, because send() on the built client
+ * does not read them. PendingRequest merges its options - the timeouts set here, and whatever
+ * the application set with `Http::globalOptions()` - only inside its own sendRequest(), and
+ * buildClient() hands back a Guzzle client that knows nothing of them. Without this the
+ * configured timeout and connect timeout never reached a request, so a hung connection waited
+ * as long as curl's own defaults allowed, and an application's proxy or CA settings were
+ * ignored for this package's traffic.
+ *
+ * TRANSPORT OPTIONS ONLY, BY NAME. transportOptions() passes an allowlist - timeouts, proxy,
+ * TLS verification and client certificates, protocol version, curl settings - and nothing
+ * else, each only when its value has the type Guzzle declares for it. Anything that would
+ * change the request itself stays out, because the request arrives here already built by the
+ * core package and has to reach BinaryLane as built: a global `headers` entry would overwrite
+ * its Accept or its Authorization, and a global `query` or `json` its query string or body. An
+ * allowlist rather than a list of exclusions, so an option a later Guzzle adds is left out
+ * until someone decides it belongs.
+ *
  * WHAT IT DOES NOT DO: raise ResponseReceived or ConnectionFailed. Laravel dispatches those
  * from PendingRequest::send(), a layer above the handler stack, so anything listening for them
  * - Telescope's HTTP client watcher - will not show this traffic. RequestSending DOES fire,
@@ -108,35 +125,174 @@ final class PendingRequestClient implements ClientInterface
     {
         $handler = $this->handler ??= Utils::chooseHandler();
 
-        return ($this->factory)()->createPendingRequest()
+        $pending = ($this->factory)()->createPendingRequest()
             ->timeout($this->timeout)
             ->connectTimeout($this->connectTimeout)
-            ->setHandler($handler)
-            ->buildClient()
-            ->send($request, [
-                RequestOptions::SYNCHRONOUS => true,
+            ->setHandler($handler);
 
-                // The core package treats only a 2xx as success and expects no redirect, so
-                // this settles nothing about this API and is set anyway: it is what Guzzle's
-                // PSR-18 entry point hard-codes, and matching it keeps the transport
-                // indistinguishable from the one the core package's own suite drives. A 3xx
-                // that did appear would be handed back whole - and reported as an error -
-                // rather than followed, bearer token attached, to somewhere unexamined.
-                RequestOptions::ALLOW_REDIRECTS => false,
+        $transport = self::transportOptions($pending->getOptions());
 
-                RequestOptions::HTTP_ERRORS => false,
+        return $pending->buildClient()->send($request, [
+            ...$transport,
 
-                // Left empty rather than filled: Request::data() parses a JSON or form body
-                // out of the request itself, so `$request['type']` works in an assertion
-                // without it. isJson() is a substring test over the Content-Type, so the
-                // core package's bare `application/json` satisfies it.
-                'laravel_data' => [],
+            RequestOptions::SYNCHRONOUS => true,
 
-                // Discarded. Laravel's own callback records TransferStats on the
-                // PendingRequest, and this one is thrown away with the pending request that
-                // built it.
-                'on_stats' => static function (TransferStats $stats): void {
-                },
-            ]);
+            // The core package treats only a 2xx as success and expects no redirect, so
+            // this settles nothing about this API and is set anyway: it is what Guzzle's
+            // PSR-18 entry point hard-codes, and matching it keeps the transport
+            // indistinguishable from the one the core package's own suite drives. A 3xx
+            // that did appear would be handed back whole - and reported as an error -
+            // rather than followed, bearer token attached, to somewhere unexamined.
+            RequestOptions::ALLOW_REDIRECTS => false,
+
+            RequestOptions::HTTP_ERRORS => false,
+
+            // Left empty rather than filled: Request::data() parses a JSON or form body
+            // out of the request itself, so `$request['type']` works in an assertion
+            // without it. isJson() is a substring test over the Content-Type, so the
+            // core package's bare `application/json` satisfies it.
+            'laravel_data' => [],
+
+            // Discarded. Laravel's own callback records TransferStats on the
+            // PendingRequest, and this one is thrown away with the pending request that
+            // built it.
+            'on_stats' => static function (TransferStats $stats): void {
+            },
+        ]);
+    }
+
+    /**
+     * The options from a pending request that govern how a request is sent, never what is sent.
+     *
+     * Each is taken only when its value has the type Guzzle declares for it; an option that does
+     * not is dropped rather than passed on to fail somewhere less obvious. Array forms are
+     * rebuilt element by element for the same reason.
+     *
+     * @param  array<mixed>  $options
+     * @return array{
+     *     timeout?: int|float,
+     *     connect_timeout?: int|float,
+     *     read_timeout?: int|float,
+     *     verify?: bool|string,
+     *     version?: string|int|float,
+     *     force_ip_resolve?: string,
+     *     crypto_method?: int,
+     *     crypto_method_max?: int,
+     *     decode_content?: bool|string,
+     *     cert?: string|array{0: string, 1?: string|null},
+     *     cert_type?: string,
+     *     ssl_key?: string|array{0: string, 1?: string|null},
+     *     ssl_key_type?: string,
+     *     proxy?: string|array{http?: string|null, https?: string|null, no?: string|array<array-key, string>|null},
+     *     curl?: array<int|string, mixed>
+     * }
+     */
+    private static function transportOptions(array $options): array
+    {
+        $transport = [];
+
+        foreach (['timeout', 'connect_timeout', 'read_timeout'] as $key) {
+            if (isset($options[$key]) && (is_int($options[$key]) || is_float($options[$key]))) {
+                $transport[$key] = $options[$key];
+            }
+        }
+
+        if (isset($options['verify']) && (is_bool($options['verify']) || is_string($options['verify']))) {
+            $transport['verify'] = $options['verify'];
+        }
+
+        if (isset($options['version']) && (is_string($options['version']) || is_int($options['version']) || is_float($options['version']))) {
+            $transport['version'] = $options['version'];
+        }
+
+        foreach (['force_ip_resolve', 'cert_type', 'ssl_key_type'] as $key) {
+            if (isset($options[$key]) && is_string($options[$key])) {
+                $transport[$key] = $options[$key];
+            }
+        }
+
+        foreach (['crypto_method', 'crypto_method_max'] as $key) {
+            if (isset($options[$key]) && is_int($options[$key])) {
+                $transport[$key] = $options[$key];
+            }
+        }
+
+        if (isset($options['decode_content']) && (is_bool($options['decode_content']) || is_string($options['decode_content']))) {
+            $transport['decode_content'] = $options['decode_content'];
+        }
+
+        foreach (['cert', 'ssl_key'] as $key) {
+            $credential = self::pathWithPassword($options[$key] ?? null);
+
+            if ($credential !== null) {
+                $transport[$key] = $credential;
+            }
+        }
+
+        $proxy = self::proxy($options['proxy'] ?? null);
+
+        if ($proxy !== null) {
+            $transport['proxy'] = $proxy;
+        }
+
+        if (isset($options['curl']) && is_array($options['curl'])) {
+            $transport['curl'] = $options['curl'];
+        }
+
+        return $transport;
+    }
+
+    /**
+     * A certificate or key: a path, or a path and its password.
+     *
+     * @return string|array{0: string, 1?: string|null}|null
+     */
+    private static function pathWithPassword(mixed $value): string|array|null
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        if (! is_array($value) || ! isset($value[0]) || ! is_string($value[0])) {
+            return null;
+        }
+
+        $password = $value[1] ?? null;
+
+        return is_string($password) ? [$value[0], $password] : [$value[0]];
+    }
+
+    /**
+     * A proxy: one URI for every scheme, or one per scheme with an exclusion list.
+     *
+     * @return string|array{http?: string|null, https?: string|null, no?: string|array<array-key, string>|null}|null
+     */
+    private static function proxy(mixed $value): string|array|null
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $proxy = [];
+
+        foreach (['http', 'https'] as $scheme) {
+            if (isset($value[$scheme]) && is_string($value[$scheme])) {
+                $proxy[$scheme] = $value[$scheme];
+            }
+        }
+
+        if (isset($value['no'])) {
+            if (is_string($value['no'])) {
+                $proxy['no'] = $value['no'];
+            } elseif (is_array($value['no'])) {
+                $proxy['no'] = array_values(array_filter($value['no'], 'is_string'));
+            }
+        }
+
+        return $proxy === [] ? null : $proxy;
     }
 }

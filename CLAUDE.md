@@ -33,7 +33,7 @@ The core package holds its own PSR-18 client, so nothing it sends is visible to 
 while the core package's request building, status mapping and exception hierarchy stay untouched.
 `tests/HttpFakeTest.php` is that claim, asserted.
 
-Three decisions in the adapter are load-bearing, and its docblock carries the reasoning for each:
+Four decisions in the adapter are load-bearing, and its docblock carries the reasoning for each:
 the pending request is **rebuilt on every send** (`Factory::fake()` replaces the stub collection,
 so a cached request holds a snapshot), from a factory **resolved from the container on every
 send** (`Http::swap()` rebinds it there, and a held factory sent past the new fakes and the new
@@ -42,6 +42,15 @@ keep-alive survives; and it calls **`send()` with four options set by hand**, be
 reads `laravel_data` and `on_stats` without a default and `http_errors` must stay off or a 404
 arrives as a transport failure. **Laravel 13 reads the first two defensively and 12 does not**, so
 the Laravel 12 CI job is the one that catches their removal.
+
+And **the pending request's own options are passed on by hand, from an allowlist.** `send()` on the
+built client never reads them — `PendingRequest` merges them only inside its own `sendRequest()` —
+so before this the configured `timeout` and `connect_timeout`, and every `Http::globalOptions()`
+setting, silently never reached a request. `transportOptions()` passes timeouts, TLS, proxy,
+protocol version and curl settings, each only when its value has the type Guzzle declares, and
+never `headers`, `auth`, `query` or a body, which would rewrite the core package's request.
+`TransportTest` pins both halves; each was probed by breaking it — nothing passed fails the two
+"reaches the request" tests, everything passed fails the "not applied" one.
 
 ## AwaitAction polls by releasing itself, and every part of that is load-bearing
 

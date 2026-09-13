@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hampel\BinaryLane\Api\Laravel\Tests;
 
+use Hampel\BinaryLane\Api\Laravel\BinaryLaneManager;
 use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Http\Client\Events\RequestSending;
@@ -68,6 +69,71 @@ final class TransportTest extends TestCase
     }
 
     #[Test]
+    public function the_configured_timeouts_reach_the_request(): void
+    {
+        // Not automatic. PendingRequest merges its options only inside its own sendRequest(), and
+        // the adapter sends through the built Guzzle client instead, so the timeouts set on the
+        // pending request never reached a request until they were passed on by hand. Read at the
+        // handler, which is where Guzzle acts on them.
+        $this->container()->make(Config::class)->set('binarylane.timeout', 7);
+        $this->container()->make(Config::class)->set('binarylane.connect_timeout', 3);
+        $this->container()->forgetInstance(ClientInterface::class);
+        $this->container()->forgetInstance(BinaryLaneManager::class);
+
+        $options = $this->optionsSeenByTheHandler();
+
+        Http::fake(['api.binarylane.com.au/*' => Http::response(['server' => self::server()])]);
+
+        BinaryLane::servers()->get(1234);
+
+        $this->assertSame(7.0, $options[0]['timeout'] ?? null);
+        $this->assertSame(3.0, $options[0]['connect_timeout'] ?? null);
+    }
+
+    #[Test]
+    public function a_global_transport_option_reaches_the_request(): void
+    {
+        // Http::globalOptions() is how an application sets a proxy or a CA bundle for all of
+        // its outbound traffic, and the README says it applies here.
+        Http::globalOptions([
+            'verify' => '/etc/ssl/certs/corporate-ca.pem',
+            'proxy' => ['https' => 'http://proxy.example.test:3128', 'no' => ['localhost']],
+        ]);
+
+        $options = $this->optionsSeenByTheHandler();
+
+        Http::fake(['api.binarylane.com.au/*' => Http::response(['server' => self::server()])]);
+
+        BinaryLane::servers()->get(1234);
+
+        $this->assertSame('/etc/ssl/certs/corporate-ca.pem', $options[0]['verify'] ?? null);
+        $this->assertSame(['https' => 'http://proxy.example.test:3128', 'no' => ['localhost']], $options[0]['proxy'] ?? null);
+    }
+
+    #[Test]
+    public function a_global_option_that_would_change_the_request_is_not_applied(): void
+    {
+        // The core package builds the request; the transport sends it as built. A global
+        // header, query or body would otherwise overwrite its Accept and Authorization headers
+        // and replace its query string or body.
+        Http::globalOptions([
+            'headers' => ['Accept' => 'text/html', 'Authorization' => 'Bearer not-this-one'],
+            'query' => ['injected' => '1'],
+            'json' => ['injected' => true],
+        ]);
+
+        Http::fake(['api.binarylane.com.au/*' => Http::response(self::action(5001, 'in-progress'))]);
+
+        BinaryLane::serverActions()->powerOn(1234);
+
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.binarylane.com.au/v2/servers/1234/actions'
+            && $request->hasHeader('Accept', 'application/json')
+            && $request->hasHeader('Authorization', 'Bearer token-under-test')
+            && $request['type'] === 'power_on'
+            && ! isset($request['injected']));
+    }
+
+    #[Test]
     public function request_sending_fires_and_response_received_does_not(): void
     {
         // Measured rather than reasoned, because the reasoning is easy to get half right.
@@ -121,5 +187,24 @@ final class TransportTest extends TestCase
         BinaryLane::servers()->list();
 
         Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'per_page=150'));
+    }
+
+    /**
+     * Records the Guzzle options of every request, as the handler receives them.
+     *
+     * @return \ArrayObject<int, array<array-key, mixed>>
+     */
+    private function optionsSeenByTheHandler(): \ArrayObject
+    {
+        /** @var \ArrayObject<int, array<array-key, mixed>> $seen */
+        $seen = new \ArrayObject();
+
+        Http::globalMiddleware(static fn (callable $handler): callable => static function (RequestInterface $request, array $options) use ($handler, $seen): mixed {
+            $seen[] = $options;
+
+            return $handler($request, $options);
+        });
+
+        return $seen;
     }
 }

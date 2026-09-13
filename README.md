@@ -123,9 +123,12 @@ fixture served locally and for an outbound proxy that terminates the connection.
 'connect_timeout' => 5,
 ```
 
-Applied to every request, alongside any `Http::globalOptions()` and
-`Http::globalRequestMiddleware()` the application has configured. These bound one request, not
-the work it starts — how long to wait for an action is `AwaitAction`'s timeout.
+Applied to every request, alongside any `Http::globalRequestMiddleware()` the application has
+configured and the transport settings from `Http::globalOptions()` — a proxy, a CA bundle or
+client certificate, the protocol version, curl options. **Global options that would change the
+request itself are not applied**: `headers`, `auth`, `query` and the body options would overwrite
+what the core package built, including its `Authorization` header. These timeouts bound one
+request, not the work it starts — how long to wait for an action is `AwaitAction`'s timeout.
 
 ## Usage
 

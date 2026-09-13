@@ -79,8 +79,11 @@ return [
     | Transport
     |--------------------------------------------------------------------------
     |
-    | Applied to Laravel's HTTP client on every request, so a consumer's own
-    | Http::globalOptions() and Http::globalRequestMiddleware() apply alongside them.
+    | Applied to Laravel's HTTP client on every request, alongside a consumer's own
+    | Http::globalRequestMiddleware() and the transport settings from
+    | Http::globalOptions() -- proxy, TLS, protocol version, curl options. Global
+    | headers, auth, query and body options are not applied: they would change the
+    | request the core package built.
     |
     | These bound ONE REQUEST, not the work it starts. A server build or a resize
     | answers within the timeout with an action to poll; how long to wait for that
