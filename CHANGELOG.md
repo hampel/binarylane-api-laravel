@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 0.3.0 (2026-09-14)
 
 - Requires `hampel/binarylane-api` `^0.3`
 - `AwaitAction` logs a failed, blocked or timed-out action at `warning`
