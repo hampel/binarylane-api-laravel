@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 0.2.0 (2026-09-13)
 
 - `illuminate/queue` and `illuminate/bus` are suggested rather than required; `AwaitAction` needs
   both installed
