@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Unreleased
+
+**Breaking:** the transport override point moves from `Psr\Http\Client\ClientInterface` to
+`binarylane.http_client`.
+
+- The PSR-18 transport is bound under `BinaryLaneServiceProvider::HTTP_CLIENT`
+  (`binarylane.http_client`), and `BinaryLaneManager` is built from that key alone
+- The provider no longer binds `Psr\Http\Client\ClientInterface`, and a binding of it no longer
+  replaces this package's transport
+- `InvalidConfiguration` is raised when `binarylane.http_client` does not resolve to a PSR-18 client
+
 ## 0.3.0 (2026-09-14)
 
 - Requires `hampel/binarylane-api` `^0.3`

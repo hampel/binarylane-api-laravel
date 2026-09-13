@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hampel\BinaryLane\Api\Laravel\Tests;
 
+use Hampel\BinaryLane\Api\Laravel\Exception\InvalidConfiguration;
 use Hampel\BinaryLane\Api\Laravel\Http\PendingRequestClient;
 use Hampel\BinaryLane\Api\Laravel\BinaryLaneManager;
 use Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider;
@@ -62,9 +63,28 @@ final class ConfigurationTest extends TestCase
     }
 
     #[Test]
-    public function the_transport_is_bound_by_interface_so_it_can_be_replaced(): void
+    public function the_transport_is_bound_under_this_packages_own_key_so_it_can_be_replaced(): void
     {
-        $this->assertInstanceOf(PendingRequestClient::class, $this->container()->make(ClientInterface::class));
+        $this->assertInstanceOf(PendingRequestClient::class, $this->container()->make(BinaryLaneServiceProvider::HTTP_CLIENT));
+    }
+
+    #[Test]
+    public function the_shared_psr18_key_is_left_for_the_application(): void
+    {
+        // Other API wrappers bind Psr\Http\Client\ClientInterface too; claiming it made the
+        // last provider registered the transport for all of them. See SharedPsr18BindingTest.
+        $this->assertFalse($this->container()->bound(ClientInterface::class));
+    }
+
+    #[Test]
+    public function a_transport_binding_that_is_not_a_psr18_client_is_named_as_configuration(): void
+    {
+        $this->container()->instance(BinaryLaneServiceProvider::HTTP_CLIENT, new \stdClass());
+
+        $this->expectException(InvalidConfiguration::class);
+        $this->expectExceptionMessage('binarylane.http_client must be a Psr\Http\Client\ClientInterface; it resolved to stdClass');
+
+        $this->container()->make(BinaryLaneManager::class);
     }
 
     #[Test]
@@ -96,7 +116,8 @@ final class ConfigurationTest extends TestCase
         (new BinaryLaneServiceProvider($app))->register();
 
         $this->assertTrue($app->bound(BinaryLaneManager::class));
-        $this->assertTrue($app->bound(ClientInterface::class));
+        $this->assertTrue($app->bound(BinaryLaneServiceProvider::HTTP_CLIENT));
+        $this->assertFalse($app->bound(ClientInterface::class));
         $this->assertTrue($app->bound(RequestFactoryInterface::class));
         $this->assertTrue($app->bound(StreamFactoryInterface::class));
         $this->assertSame('main', $app->make(Config::class)->get('binarylane.default'));

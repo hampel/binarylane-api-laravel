@@ -26,6 +26,23 @@ composer format         # pint
 | `src/Exception/` | configuration and queue failures, in the core package's hierarchy |
 | `config/binarylane.php` | the published config |
 
+## The transport lives under `binarylane.http_client`, never the shared PSR-18 key
+
+**The provider binds `PendingRequestClient` under `BinaryLaneServiceProvider::HTTP_CLIENT` and
+builds the manager from that key alone.** It does not bind `Psr\Http\Client\ClientInterface`, and
+does not read it. That key is shared: every API wrapper that bound it with `singleton()` replaced
+the one before, so in an application with several wrappers installed the last provider registered
+supplied the transport — and the timeouts — for all of them. Measured in a real application with
+three wrappers installed, where one package's `timeout` governed another's requests.
+
+**Do not add a fallback to `ClientInterface` when it is bound.** It reads as a kindness to an
+application with its own client, and brings the collision straight back: an older wrapper, or an
+unrelated library, may be what bound it. `SharedPsr18BindingTest` registers a stub provider that
+binds the shared key, before and after this one, and asserts the manager keeps its own adapter and
+timeout; it was red against the old binding in the "after" order. The same
+`<config key>.http_client` convention was agreed for the sibling Cloudflare, Linode and XenForo
+wrappers.
+
 ## `Http::fake()` reaching the core package's traffic is the claim everything rests on
 
 The core package holds its own PSR-18 client, so nothing it sends is visible to `Http::fake()`.

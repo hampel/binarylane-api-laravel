@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hampel\BinaryLane\Api\Laravel\Tests;
 
 use Hampel\BinaryLane\Api\Laravel\BinaryLaneManager;
+use Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider;
 use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Http\Client\Events\RequestSending;
@@ -22,9 +23,9 @@ final class TransportTest extends TestCase
     #[Test]
     public function a_replacement_transport_is_used_by_every_account(): void
     {
-        // The reason ClientInterface is bound by interface rather than constructed inside the
+        // The reason the transport is bound under its own key rather than constructed inside the
         // manager: an application with its own outbound HTTP policy - a proxy-aware,
-        // SSRF-guarded client everything is required to go through - binds it here and this
+        // SSRF-guarded client everything is required to go through - binds it there and this
         // package uses it, instead of the application writing a second API client.
         $recorder = new class () implements ClientInterface {
             /** @var list<array{string, string}> */
@@ -42,7 +43,7 @@ final class TransportTest extends TestCase
             }
         };
 
-        $this->container()->instance(ClientInterface::class, $recorder);
+        $this->container()->instance(BinaryLaneServiceProvider::HTTP_CLIENT, $recorder);
 
         BinaryLane::servers()->get(1);
         BinaryLane::client('reseller')->servers()->get(2);
@@ -77,7 +78,7 @@ final class TransportTest extends TestCase
         // handler, which is where Guzzle acts on them.
         $this->container()->make(Config::class)->set('binarylane.timeout', 7);
         $this->container()->make(Config::class)->set('binarylane.connect_timeout', 3);
-        $this->container()->forgetInstance(ClientInterface::class);
+        $this->container()->forgetInstance(BinaryLaneServiceProvider::HTTP_CLIENT);
         $this->container()->forgetInstance(BinaryLaneManager::class);
 
         $options = $this->optionsSeenByTheHandler();

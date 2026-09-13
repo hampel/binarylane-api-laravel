@@ -42,6 +42,19 @@ final class InvalidConfiguration extends BinaryLaneException
     }
 
     /**
+     * The container key an application rebinds to supply its own transport holds something that
+     * is not a PSR-18 client.
+     */
+    public static function httpClient(string $key, string $type): self
+    {
+        return new self(sprintf(
+            'The container binding %s must be a Psr\\Http\\Client\\ClientInterface; it resolved to %s.',
+            $key,
+            $type
+        ));
+    }
+
+    /**
      * The core package refused the page size or base URI.
      *
      * Wrapped rather than passed through, so the message names the configuration rather than

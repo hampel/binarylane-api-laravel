@@ -356,8 +356,19 @@ $job->handle(app(BinaryLaneManager::class), app('events'), app('log'));
 $job->assertReleased(10);
 ```
 
-Replace the transport entirely by binding `Psr\Http\Client\ClientInterface` — how an application
-with its own outbound HTTP policy makes this package use it.
+Replace the transport entirely by binding `binarylane.http_client` — how an application with its
+own outbound HTTP policy makes this package use it:
+
+```php
+use Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider;
+
+$this->app->singleton(BinaryLaneServiceProvider::HTTP_CLIENT, fn () => $myPsr18Client);
+```
+
+**This package does not use a `Psr\Http\Client\ClientInterface` binding**, yours or another
+package's, and does not bind that key itself. It is one key shared by every package that uses it,
+so an application with several API integrations installed would otherwise get whichever
+registered last. To send several packages through one client, bind each package's own key to it.
 
 ### What Laravel's HTTP events see
 
