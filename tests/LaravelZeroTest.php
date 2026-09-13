@@ -29,6 +29,11 @@ use PHPUnit\Framework\Attributes\Test;
  * not intercept and the request goes to the real API. Testbench boots a full application, so
  * nothing in the rest of the suite can see it.
  *
+ * WHAT THIS DOES NOT PROVE: that a Laravel Zero application registers the provider. It does not -
+ * Laravel Zero empties the package manifest, so auto-discovery never runs and a consumer lists
+ * the provider in config/app.php. The application below registers it by hand, so these tests
+ * cover what the provider binds, not whether it is loaded.
+ *
  * Laravel Zero is also a likely home for this package. A tool that builds servers or reconciles
  * DNS from a file is a command rather than a web request - and a command is where the core
  * package's blocking Actions::await() is the right choice.

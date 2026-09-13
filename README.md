@@ -42,12 +42,24 @@ behaviour is the same on both. `AwaitAction` additionally needs the queue compon
 composer require hampel/binarylane-api-laravel
 ```
 
-The provider and the `BinaryLane` alias are discovered automatically. Publish the config file if
-you want to edit it:
+In a Laravel application the provider and the `BinaryLane` alias are discovered automatically.
+Publish the config file if you want to edit it:
 
 ```bash
 php artisan vendor:publish --tag=binarylane-config
 ```
+
+**Laravel Zero does not run package discovery**, so there the provider has to be listed by hand, in
+`config/app.php`:
+
+```php
+'providers' => [
+    Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider::class,
+],
+```
+
+The global `BinaryLane` alias is not registered either. Import the facade class —
+`use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;` — or inject `BinaryLaneManager`.
 
 ## Configuration
 

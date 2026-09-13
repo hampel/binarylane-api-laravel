@@ -99,6 +99,12 @@ Read the class docblock before changing it. The short form:
 - **Laravel Zero does not bind the HTTP client factory**, so the provider binds a singleton with
   `singletonIf`. `tests/LaravelZeroTest.php` builds that container by hand, because Testbench
   always boots a full application.
+- **Laravel Zero does not run package discovery either**, so a Laravel Zero consumer lists the
+  provider in `config/app.php`, and the global `BinaryLane` alias never exists there.
+  `LaravelZero\Framework\Application::registerBaseBindings()` empties the package manifest.
+  **Nothing in the suite can catch a regression in the README's instructions for this**:
+  `LaravelZeroTest` registers the provider itself, and testing discovery would need
+  `laravel-zero/framework` as a dev dependency.
 - **`composer-require-checker` carries the undeclared-dependency check, and is not in
   `composer check`.** `laravel/framework` `replace`s every `illuminate/*` component, so every
   whitelisted symbol in `.github/composer-require-checker.json` belongs to a component that is in
