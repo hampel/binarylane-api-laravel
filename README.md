@@ -104,6 +104,13 @@ environment variable. An empty string counts as no token. It raises
 `Hampel\BinaryLane\Api\Laravel\Exception\InvalidConfiguration`, which extends the core package's
 `BinaryLaneException`.
 
+**An application config file named `binarylane.php` replaces these settings key by key.**
+Laravel merges a package's configuration shallowly, and the application's file wins for every
+top-level key it defines. So an application that already keeps its own settings in
+`config/binarylane.php` — a `timeout` meaning something else, say — silently changes this
+package's settings of the same name, with no error from either. Publish this file and edit it,
+or name your own settings file something else.
+
 ### Page size and base URI describe the API, not an account
 
 ```php
