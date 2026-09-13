@@ -6,7 +6,9 @@ namespace Hampel\BinaryLane\Api\Laravel\Tests;
 
 use Hampel\BinaryLane\Api\Laravel\BinaryLaneServiceProvider;
 use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;
+use Hampel\BinaryLane\Api\Laravel\Http\PendingRequestClient;
 use Hampel\BinaryLane\Api\Laravel\Tests\Fixture\ForeignPsr18Provider;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Http\Client\ClientInterface;
@@ -59,6 +61,28 @@ final class SharedPsr18BindingTest extends TestCase
         // force: the class is already registered above, and register() would otherwise hand back
         // that instance without running register() again.
         $this->container()->register(new ForeignPsr18Provider($this->container()), force: true);
+
+        $this->assertOwnTransportIsUsed();
+    }
+
+    #[Test]
+    public function a_sibling_adapter_that_is_also_faked_does_not_lend_its_timeout(): void
+    {
+        // The realistic collision, and the one the 418 stub cannot stand in for. A sibling
+        // wrapper's adapter is a PendingRequestClient too, sending through the SAME faked HTTP
+        // factory, so Http::fake() answers whichever adapter sends and the response looks right.
+        // Only the timeout tells them apart - which is what the consuming application measured.
+        //
+        // The sibling's resolver makes the application's factory, not a new one: a fresh Factory
+        // would send past the fake, and the test would fail on the network instead of on the
+        // timeout.
+        $app = $this->container();
+
+        $app->singleton(ClientInterface::class, static fn (): ClientInterface => new PendingRequestClient(
+            static fn (): Factory => $app->make(Factory::class),
+            3.0,
+            1.0,
+        ));
 
         $this->assertOwnTransportIsUsed();
     }
