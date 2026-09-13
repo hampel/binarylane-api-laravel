@@ -191,42 +191,62 @@ final class PendingRequestClient implements ClientInterface
     {
         $transport = [];
 
-        foreach (['timeout', 'connect_timeout', 'read_timeout'] as $key) {
-            if (isset($options[$key]) && (is_int($options[$key]) || is_float($options[$key]))) {
-                $transport[$key] = $options[$key];
-            }
+        // One key at a time rather than a loop over names: an array built with a variable key
+        // loses its shape to static analysis on the oldest PHPStan the package supports.
+        if (self::isNumber($options['timeout'] ?? null)) {
+            $transport['timeout'] = $options['timeout'];
+        }
+
+        if (self::isNumber($options['connect_timeout'] ?? null)) {
+            $transport['connect_timeout'] = $options['connect_timeout'];
+        }
+
+        if (self::isNumber($options['read_timeout'] ?? null)) {
+            $transport['read_timeout'] = $options['read_timeout'];
         }
 
         if (isset($options['verify']) && (is_bool($options['verify']) || is_string($options['verify']))) {
             $transport['verify'] = $options['verify'];
         }
 
-        if (isset($options['version']) && (is_string($options['version']) || is_int($options['version']) || is_float($options['version']))) {
+        if (isset($options['version']) && (is_string($options['version']) || self::isNumber($options['version']))) {
             $transport['version'] = $options['version'];
         }
 
-        foreach (['force_ip_resolve', 'cert_type', 'ssl_key_type'] as $key) {
-            if (isset($options[$key]) && is_string($options[$key])) {
-                $transport[$key] = $options[$key];
-            }
+        if (isset($options['force_ip_resolve']) && is_string($options['force_ip_resolve'])) {
+            $transport['force_ip_resolve'] = $options['force_ip_resolve'];
         }
 
-        foreach (['crypto_method', 'crypto_method_max'] as $key) {
-            if (isset($options[$key]) && is_int($options[$key])) {
-                $transport[$key] = $options[$key];
-            }
+        if (isset($options['crypto_method']) && is_int($options['crypto_method'])) {
+            $transport['crypto_method'] = $options['crypto_method'];
+        }
+
+        if (isset($options['crypto_method_max']) && is_int($options['crypto_method_max'])) {
+            $transport['crypto_method_max'] = $options['crypto_method_max'];
         }
 
         if (isset($options['decode_content']) && (is_bool($options['decode_content']) || is_string($options['decode_content']))) {
             $transport['decode_content'] = $options['decode_content'];
         }
 
-        foreach (['cert', 'ssl_key'] as $key) {
-            $credential = self::pathWithPassword($options[$key] ?? null);
+        $cert = self::pathWithPassword($options['cert'] ?? null);
 
-            if ($credential !== null) {
-                $transport[$key] = $credential;
-            }
+        if ($cert !== null) {
+            $transport['cert'] = $cert;
+        }
+
+        if (isset($options['cert_type']) && is_string($options['cert_type'])) {
+            $transport['cert_type'] = $options['cert_type'];
+        }
+
+        $sslKey = self::pathWithPassword($options['ssl_key'] ?? null);
+
+        if ($sslKey !== null) {
+            $transport['ssl_key'] = $sslKey;
+        }
+
+        if (isset($options['ssl_key_type']) && is_string($options['ssl_key_type'])) {
+            $transport['ssl_key_type'] = $options['ssl_key_type'];
         }
 
         $proxy = self::proxy($options['proxy'] ?? null);
@@ -240,6 +260,14 @@ final class PendingRequestClient implements ClientInterface
         }
 
         return $transport;
+    }
+
+    /**
+     * @phpstan-assert-if-true int|float $value
+     */
+    private static function isNumber(mixed $value): bool
+    {
+        return is_int($value) || is_float($value);
     }
 
     /**
@@ -279,17 +307,19 @@ final class PendingRequestClient implements ClientInterface
 
         $proxy = [];
 
-        foreach (['http', 'https'] as $scheme) {
-            if (isset($value[$scheme]) && is_string($value[$scheme])) {
-                $proxy[$scheme] = $value[$scheme];
-            }
+        if (isset($value['http']) && is_string($value['http'])) {
+            $proxy['http'] = $value['http'];
+        }
+
+        if (isset($value['https']) && is_string($value['https'])) {
+            $proxy['https'] = $value['https'];
         }
 
         if (isset($value['no'])) {
             if (is_string($value['no'])) {
                 $proxy['no'] = $value['no'];
             } elseif (is_array($value['no'])) {
-                $proxy['no'] = array_values(array_filter($value['no'], 'is_string'));
+                $proxy['no'] = array_values(array_filter($value['no'], is_string(...)));
             }
         }
 
