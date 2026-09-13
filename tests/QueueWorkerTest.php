@@ -54,7 +54,7 @@ final class QueueWorkerTest extends TestCase
 
         $this->work();
         $this->assertSame(1, DB::table('jobs')->count(), 'The first poll should have released the job, not dropped it.');
-        $this->assertEquals(1, DB::table('jobs')->value('attempts'));
+        $this->assertSame(1, DB::table('jobs')->value('attempts'));
 
         // Not yet available: the release carried the interval as a delay.
         $this->work();
