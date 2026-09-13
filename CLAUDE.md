@@ -76,13 +76,11 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **The constraint is `^0.2` because 0.1 read a malformed success as an empty one.** In 0.1 an
-  empty-bodied 2xx became an empty response and a body without its envelope key a blank entity, so
-  `Http::fake()` with no arguments reported an account with no servers. 0.2.0 raises
-  `MalformedResponseException` for both, with different messages — "the body was empty" and
-  `without the expected "servers" key`. `ExceptionPassthroughTest` pins each separately, and
-  `HttpFakeTest::a_bodiless_202_is_an_action_that_is_not_there` pins the 202 that must still not
-  raise.
+- **An empty or envelope-less success raises, and a bodiless 202 does not.** The core package
+  draws that line from `^0.2` onwards, which is why the constraint cannot go lower. The two raising
+  cases arrive by different paths with different messages, so `ExceptionPassthroughTest` pins each
+  on its own; `HttpFakeTest::a_bodiless_202_is_an_action_that_is_not_there` pins the arm that must
+  stay silent.
 - **A `per_page` of 0 is refused by the manager although the core `Config` accepts it.** It is the
   API's count-only request, meaningful once and never as a default.
 - **The named-account accessor is `client()` because `account()` and `connection()` are taken** by
