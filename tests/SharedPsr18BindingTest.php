@@ -9,6 +9,7 @@ use Hampel\BinaryLane\Api\Laravel\Facades\BinaryLane;
 use Hampel\BinaryLane\Api\Laravel\Tests\Fixture\ForeignPsr18Provider;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -37,6 +38,17 @@ final class SharedPsr18BindingTest extends TestCase
     public function a_provider_registered_before_this_one_does_not_supply_its_transport(): void
     {
         $this->assertOwnTransportIsUsed();
+    }
+
+    #[Test]
+    public function a_provider_registered_before_this_one_keeps_its_own_binding(): void
+    {
+        // The half of the before-order that the old binding broke from the other side. It used
+        // this package's own transport in that order too - by overwriting the shared key - so
+        // asserting only that would pass against it. What changed is that another package's
+        // binding now survives this provider's registration.
+        $this->assertNotNull(ForeignPsr18Provider::$client);
+        $this->assertSame(ForeignPsr18Provider::$client, $this->container()->make(ClientInterface::class));
     }
 
     #[Test]
