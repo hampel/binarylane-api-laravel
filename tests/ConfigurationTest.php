@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use ReflectionProperty;
 
 final class ConfigurationTest extends TestCase
 {
@@ -121,5 +122,48 @@ final class ConfigurationTest extends TestCase
         $this->assertTrue($app->bound(RequestFactoryInterface::class));
         $this->assertTrue($app->bound(StreamFactoryInterface::class));
         $this->assertSame('main', $app->make(Config::class)->get('binarylane.default'));
+    }
+
+    #[Test]
+    public function booting_the_provider_publishes_this_packages_config(): void
+    {
+        // Booted here, against an application built in the test body, for the same reason as
+        // the register() test above - and boot() needs it separately. Testbench boots every
+        // provider inside parent::setUp(), under Laravel's error handler, which discards
+        // deprecations; publishes() and configPath() run there and nowhere else, so a
+        // deprecation in either would reach every application and never this suite.
+        //
+        // The publish registry is static and keyed by provider class, and Testbench's own boot
+        // has already filled it for this class. Emptied first, or this assertion passes on
+        // Testbench's entry even if the boot below registered nothing - and restored after, or
+        // the publish-tag test above depends on execution order.
+        $publishes = new ReflectionProperty(ServiceProvider::class, 'publishes');
+        $groups = new ReflectionProperty(ServiceProvider::class, 'publishGroups');
+        $savedPublishes = $publishes->getValue();
+        $savedGroups = $groups->getValue();
+
+        try {
+            $publishes->setValue(null, []);
+            $groups->setValue(null, []);
+
+            $app = new Application(__DIR__ . '/..');
+            $app->instance('config', new ConfigRepository());
+
+            $provider = new BinaryLaneServiceProvider($app);
+            $provider->register();
+            $provider->boot();
+
+            // The source path, not the destination: the destination is this throwaway
+            // application's config directory and says nothing about the package.
+            $this->assertSame(
+                [realpath(__DIR__ . '/../config/binarylane.php')],
+                array_map(realpath(...), array_keys(
+                    ServiceProvider::pathsToPublish(BinaryLaneServiceProvider::class, 'binarylane-config')
+                )),
+            );
+        } finally {
+            $publishes->setValue(null, $savedPublishes);
+            $groups->setValue(null, $savedGroups);
+        }
     }
 }
