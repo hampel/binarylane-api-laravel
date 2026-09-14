@@ -174,7 +174,7 @@ public function __construct(private readonly BinaryLaneManager $binarylane) {}
 $this->binarylane->client('reseller')->servers()->list();
 ```
 
-## Waiting for an action happens on the queue, not in the request
+## Waiting for actions
 
 **A server action returns a receipt, not a result.** Powering a server on, resizing it,
 rebuilding it and creating it all answer with an action that has not finished yet. The core
