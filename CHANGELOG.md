@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.5.0 (2026-09-14)
+
+- Requires `hampel/binarylane-api` `^0.4`, in which `DomainRecord::$type` is nullable for a record
+  type the core package does not recognise
+
 ## 0.4.0 (2026-09-14)
 
 **Breaking:** the transport override point moves from `Psr\Http\Client\ClientInterface` to

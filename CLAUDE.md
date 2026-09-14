@@ -114,9 +114,10 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **The core constraint is `^0.3`, and both of the core's recent behaviours are load-bearing.**
-  From 0.3 the core logs nothing above `debug`, which is why `AwaitAction` logs its own outcomes;
-  on 0.2 those lines would be doubled.
+- **The core constraint is `^0.4`.** From 0.3 the core logs nothing above `debug`, which is why
+  `AwaitAction` logs its own outcomes; on 0.2 those lines would be doubled. From 0.4 the core
+  refuses any request URI outside the configured API, which `PendingRequestClient` never sends
+  anyway, since every URI it is handed already resolves against the configured base URI.
 - **An empty or envelope-less success raises, and a bodiless 202 does not** — the core package's
   line since 0.2. The two raising
   cases arrive by different paths with different messages, so `ExceptionPassthroughTest` pins each
