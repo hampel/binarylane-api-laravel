@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.6.0 (2026-09-14)
+
+- Requires `hampel/binarylane-api` `^0.5`, in which `Server::$isUnderMaintenance` is `?bool`: null
+  when BinaryLane did not check
+
 ## 0.5.0 (2026-09-14)
 
 - Requires `hampel/binarylane-api` `^0.4`, in which `DomainRecord::$type` is nullable for a record
