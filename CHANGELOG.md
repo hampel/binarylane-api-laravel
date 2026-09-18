@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- README and `config/binarylane.php`: creating a DNS zone takes longer than BinaryLane's
+  60-second gateway limit, raises an exception, and creates the zone
+
 ## 0.6.0 (2026-09-14)
 
 - Requires `hampel/binarylane-api` `^0.5`, in which `Server::$isUnderMaintenance` is `?bool`: null

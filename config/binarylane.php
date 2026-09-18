@@ -89,6 +89,11 @@ return [
     | answers within the timeout with an action to poll; how long to wait for that
     | action is AwaitAction's timeout, not this one.
     |
+    | Creating a DNS zone is the exception: it does its work inside the request,
+    | takes about a minute, and BinaryLane's gateway answers 504 at 60 seconds. No
+    | timeout here sees it succeed, and the zone is created whichever error arrives.
+    | Read it back, or create it again: a duplicate is refused with a 400.
+    |
     */
 
     'timeout' => env('BINARYLANE_TIMEOUT', 10),

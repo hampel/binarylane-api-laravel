@@ -137,6 +137,12 @@ request itself are not applied**: `headers`, `auth`, `query` and the body option
 what the core package built, including its `Authorization` header. These timeouts bound one
 request, not the work it starts — how long to wait for an action is `AwaitAction`'s timeout.
 
+**Creating a DNS zone fails and succeeds at once.** `domains()->create()` does its work inside the
+request rather than returning an action, takes about a minute, and BinaryLane's gateway answers
+`504` at 60 seconds. Below that the core package raises `RequestException`, above it
+`ServerException`, and in both cases the zone is created. Check with `domains()->exists()`, or
+create it again: a duplicate is refused with a `400`, "Domain name already in use".
+
 ## Usage
 
 The facade reaches the default account directly:
