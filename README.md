@@ -392,7 +392,7 @@ is the catcher's decision. The token is never logged.
 ## Versioning
 
 `hampel/binarylane-api` is 0.x, so its public API can change in a minor release; this package
-constrains it at `^0.5` and expects to bump.
+constrains it at `^0.6` and expects to bump.
 
 ## License
 

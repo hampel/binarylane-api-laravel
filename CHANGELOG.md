@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Requires `hampel/binarylane-api` `^0.6`, in which `DomainRecord::mx()` requires a priority and
+  `DomainRecord::srv()` a priority and a weight
 - README and `config/binarylane.php`: creating a DNS zone takes longer than BinaryLane's
   60-second gateway limit, raises an exception, and creates the zone
 

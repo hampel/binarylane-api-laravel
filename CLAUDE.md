@@ -114,7 +114,7 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **The core constraint is `^0.5`.** From 0.3 the core logs nothing above `debug`, which is why
+- **The core constraint is `^0.6`.** From 0.3 the core logs nothing above `debug`, which is why
   `AwaitAction` logs its own outcomes; on 0.2 those lines would be doubled. From 0.4 the core
   refuses any request URI outside the configured API, which `PendingRequestClient` never sends
   anyway, since every URI it is handed already resolves against the configured base URI.
