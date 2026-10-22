@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Unreleased
+
+- Allows `hampel/binarylane-api` `^1.0` beside `^0.6`
+
 ## 0.7.0 (2026-09-18)
 
 - Requires `hampel/binarylane-api` `^0.6`, in which `DomainRecord::mx()` requires a priority and

@@ -391,8 +391,8 @@ is the catcher's decision. The token is never logged.
 
 ## Versioning
 
-`hampel/binarylane-api` is 0.x, so its public API can change in a minor release; this package
-constrains it at `^0.6` and expects to bump.
+This package constrains `hampel/binarylane-api` at `^0.6|^1.0`. Core 1.0.0 is code-identical to
+0.6.1 and declares its API stable under semver, so a later 1.x release needs no bump here.
 
 ## License
 
