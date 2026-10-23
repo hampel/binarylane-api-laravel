@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 0.7.1 (2026-10-23)
 
 - Allows `hampel/binarylane-api` `^1.0` beside `^0.6`
 
