@@ -1,7 +1,8 @@
 # CHANGELOG
 
-## Unreleased
+## 1.0.0 (2026-11-24)
 
+- Declares the public API stable under semver; nothing in `src/` changes from 0.7.1
 - Requires Laravel `^12.71|^13.40`, the lowest releases Composer will install
 - README: BinaryLane can answer a repeated action with the one still running, so two
   `AwaitAction` jobs may wait on one action and fire different events
