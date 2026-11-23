@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Requires Laravel `^12.71|^13.40`, the lowest releases Composer will install
+- README: BinaryLane can answer a repeated action with the one still running, so two
+  `AwaitAction` jobs may wait on one action and fire different events
 
 ## 0.7.1 (2026-10-23)
 

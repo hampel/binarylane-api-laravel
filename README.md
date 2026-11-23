@@ -262,6 +262,12 @@ Event::listen(function (ActionBlocked $event) {
 **The events share no parent class, deliberately.** Laravel matches a listener by class and by
 interface, never by parent class, so a listener on a common base would hear nothing.
 
+**An event reports what one job saw, not a verdict on the action.** Ask BinaryLane for the same
+action on the same server while one is still running and it can answer with the running action
+rather than a new one, so two jobs may wait on one action id. Each fires its own event, and they
+need not agree: a job with a short timeout fires `ActionTimedOut` for an action that another job
+then sees complete. A listener keyed on the action id should expect more than one event for it.
+
 ### When it cannot find out, it retries or fails
 
 **A poll that failed in a way the next one may not repeat is retried until the deadline** — a 5xx,
