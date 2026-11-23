@@ -27,17 +27,17 @@
         "guzzlehttp/guzzle": "^7.8|^8.0",
         "guzzlehttp/psr7": "^2.0|^3.0",
         "hampel/binarylane-api": "^0.6|^1.0",
-        "illuminate/contracts": "^12.0|^13.0",
-        "illuminate/http": "^12.0|^13.0",
-        "illuminate/support": "^12.0|^13.0",
+        "illuminate/contracts": "^12.71|^13.40",
+        "illuminate/http": "^12.71|^13.40",
+        "illuminate/support": "^12.71|^13.40",
         "psr/http-client": "^1.0",
         "psr/http-factory": "^1.0",
         "psr/http-message": "^1.1|^2.0",
         "psr/log": "^1.1|^2.0|^3.0"
     },
     "require-dev": {
-        "illuminate/bus": "^12.0|^13.0",
-        "illuminate/queue": "^12.0|^13.0",
+        "illuminate/bus": "^12.71|^13.40",
+        "illuminate/queue": "^12.71|^13.40",
         "larastan/larastan": "^3.4.2",
         "laravel/pint": "^1.30",
         "orchestra/testbench": "^10.0|^11.0",
@@ -45,8 +45,8 @@
         "phpunit/phpunit": "^11.0|^12.0"
     },
     "suggest": {
-        "illuminate/bus": "Required by AwaitAction (^12.0|^13.0)",
-        "illuminate/queue": "Required by AwaitAction (^12.0|^13.0)"
+        "illuminate/bus": "Required by AwaitAction (^12.71|^13.40)",
+        "illuminate/queue": "Required by AwaitAction (^12.71|^13.40)"
     },
     "autoload": {
         "psr-4": {

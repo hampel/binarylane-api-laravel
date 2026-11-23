@@ -28,7 +28,7 @@ a 401 and a 404 stay different exceptions rather than both becoming an unsuccess
 
 ## Requirements
 
-PHP 8.3 or later, and Laravel 12 or 13.
+PHP 8.3 or later, and Laravel 12.71 or later or 13.40 or later.
 
 Laravel Zero works too, with the HTTP component installed (`php <app> app:install http`). Laravel
 binds `Illuminate\Http\Client\Factory` as a singleton in `FoundationServiceProvider`, which a

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Unreleased
+
+- Requires Laravel `^12.71|^13.40`, the lowest releases Composer will install
+
 ## 0.7.1 (2026-10-23)
 
 - Allows `hampel/binarylane-api` `^1.0` beside `^0.6`
