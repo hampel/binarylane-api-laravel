@@ -44,8 +44,8 @@ application with its own client, and brings the collision straight back: an olde
 unrelated library, may be what bound it. `SharedPsr18BindingTest` registers a stub provider that
 binds the shared key, before and after this one, and asserts the manager keeps its own adapter and
 timeout; it was red against the old binding in the "after" order. The same
-`<config key>.http_client` convention was agreed for the sibling Cloudflare, Linode and XenForo
-wrappers.
+`<config key>.http_client` convention is used by `hampel/cloudflare-api-laravel`,
+`hampel/linode-api-laravel` and `hampel/xenforo-api-laravel` too.
 
 ## `Http::fake()` reaching the core package's traffic is the claim everything rests on
 
@@ -114,6 +114,11 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
+- **The Laravel floors are the lowest releases Composer will install.** Composer 2.9 and later
+  refuse a release affected by a published security advisory, so on 2026-11-24 nothing below
+  12.71.0 or 13.40.0 resolved, and a lower floor promised versions nobody could install or test.
+  When a new advisory covers the floor, the `--prefer-lowest` job fails to resolve; raise the floor
+  to what resolves, and re-run the suite and PHPStan there on PHP 8.3.
 - **The core constraint is `^0.6|^1.0`.** Core 1.0.0 is 0.6.1 declared stable, and keeping `^0.6`
   in the range keeps the `--prefer-lowest` corner on 0.6.0. From 0.3 the core logs nothing above
   `debug`, which is why `AwaitAction` logs its own outcomes; on 0.2 those lines would be doubled.
