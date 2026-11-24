@@ -114,11 +114,14 @@ Read the class docblock before changing it. The short form:
 
 ## Facts worth not rediscovering
 
-- **The Laravel floors are the lowest releases Composer will install.** Composer 2.9 and later
-  refuse a release affected by a published security advisory, so on 2026-11-24 nothing below
-  12.71.0 or 13.40.0 resolved, and a lower floor promised versions nobody could install or test.
-  When a new advisory covers the floor, the `--prefer-lowest` job fails to resolve; raise the floor
-  to what resolves, and re-run the suite and PHPStan there on PHP 8.3.
+- **The Laravel, Guzzle and PSR-7 floors are the lowest releases Composer will install.**
+  Composer 2.9 and later refuse a release affected by a published security advisory, so on
+  2026-11-24 nothing resolved below Laravel 12.71.0 and 13.40.0, Guzzle 7.15.2 and 8.1.0, or PSR-7
+  2.13.0 and 3.1.0, and a lower floor promised versions nobody could install or test. When a new
+  advisory covers a floor, the `--prefer-lowest` job fails to resolve; raise the floor to what
+  resolves, and re-run the suite and PHPStan there on PHP 8.3. That job picks Guzzle 7 and PSR-7
+  2, so the Guzzle 8 and PSR-7 3 floors are checked by hand, with `--with` naming both together:
+  PSR-7 3 resolves only beside Guzzle 8.
 - **The core constraint is `^0.6|^1.0`.** Core 1.0.0 is 0.6.1 declared stable, and keeping `^0.6`
   in the range keeps the `--prefer-lowest` corner on 0.6.0. From 0.3 the core logs nothing above
   `debug`, which is why `AwaitAction` logs its own outcomes; on 0.2 those lines would be doubled.
