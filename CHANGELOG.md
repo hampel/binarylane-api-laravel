@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 1.0.1 (2026-11-24)
+
+- Requires `guzzlehttp/guzzle` `^7.15.2|^8.1` and `guzzlehttp/psr7` `^2.13|^3.1`, the lowest
+  releases Composer will install
+
 ## 1.0.0 (2026-11-24)
 
 - Declares the public API stable under semver; nothing in `src/` changes from 0.7.1
